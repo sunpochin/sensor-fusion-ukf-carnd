@@ -24,11 +24,15 @@ UKF::UKF() {
   // initial covariance matrix
   P_ = MatrixXd(5, 5);
 
-  // Process noise standard deviation longitudinal acceleration in m/s^2
-  std_a_ = 30;
 
+  // quote project tips :
+  // "You will need to tune the process noise parameters std_a_ and std_yawdd_ in order to get your solution working on both datasets."
+  // "The measurement noise parameters for lidar and radar should be left as given."
+  // Process noise standard deviation longitudinal acceleration in m/s^2
+  std_a_ = 1;
   // Process noise standard deviation yaw acceleration in rad/s^2
-  std_yawdd_ = 30;
+  std_yawdd_ = 1;
+  // todo: these two using 1, 1 looked fine with Radar data only. May need to be changed to meet rubric after adding lidar data.
 
   //DO NOT MODIFY measurement noise values below these are provided by the sensor manufacturer.
   // Laser measurement noise standard deviation position1 in m
@@ -480,26 +484,17 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
     //angle normalization
     std::cout << "iteration : " << i << " ";
     while (x_diff(3)>M_PI) {
-      std::cout << "before: in state difference, x_diff(3) > : " << x_diff(3) << " M_PI : " << M_PI << std::endl ;
+      // std::cout << "before: in state difference, x_diff(3) > : " << x_diff(3) << " M_PI : " << M_PI << std::endl ;
       x_diff(3)-=2.*M_PI;
-      std::cout << "after: in state difference, x_diff(3) > : " << x_diff(3) << " M_PI : " << M_PI << std::endl ;
+      // std::cout << "after: in state difference, x_diff(3) > : " << x_diff(3) << " M_PI : " << M_PI << std::endl ;
     }
     while (x_diff(3)<-M_PI) {
-      std::cout << "before: in state difference, x_diff(3) <- : " << x_diff(3) << " M_PI : " << M_PI << std::endl ;
+      // std::cout << "before: in state difference, x_diff(3) <- : " << x_diff(3) << " M_PI : " << M_PI << std::endl ;
       x_diff(3)+=2.*M_PI;
-      std::cout << "after: in state difference, x_diff(3) <- : " << x_diff(3) << " M_PI : " << M_PI << std::endl ;
+      // std::cout << "after: in state difference, x_diff(3) <- : " << x_diff(3) << " M_PI : " << M_PI << std::endl ;
     }
     // todo:
     // strange value with dataset 2:
-    // before: in state difference, x_diff(3) <- : -3.21725 M_PI : 3.14159
-    // after: in state difference, x_diff(3) <- : 3.06594 M_PI : 3.14159
-    // before: in state difference, x_diff(3) > : 3.21725 M_PI : 3.14159
-    // after: in state difference, x_diff(3) > : -3.06594 M_PI : 3.14159
-
-    // before: in state difference, x_diff(3) > : 3.53236 M_PI : 3.14159
-    // after: in state difference, x_diff(3) > : -2.75083 M_PI : 3.14159
-    // before: in state difference, x_diff(3) <- : -3.53236 M_PI : 3.14159
-    // after: in state difference, x_diff(3) <- : 2.75083 M_PI : 3.14159
 
     // iteration : 0 iteration : 1 iteration : 2
     // before: in state difference, x_diff(3) <- : -3.21725 M_PI : 3.14159
@@ -508,8 +503,8 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
     // before: in state difference, x_diff(3) > : 3.21725 M_PI : 3.14159
     // after: in state difference, x_diff(3) > : -3.06594 M_PI : 3.14159
     // iteration : 10 iteration : 11 iteration : 12 iteration : 13 iteration : 14
-
-    // which means a bug? but what and how ?
+    // It turned out these 2 "caused by big std_a_1.png" and "caused by big std_a_2.png"
+    // was caused by not initializing std_a_ and std_yawdd_ correctly.
 
     Tc = Tc + weights_(i) * x_diff * z_diff.transpose();
     // std::cout << "weights_(i) : " << std::endl << weights_(i) << std::endl ;
