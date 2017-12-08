@@ -94,6 +94,14 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
     0.0, 0.0, 0.0, 1.0, 0.0,
     0.0, 0.0, 0.0, 0.0, 1.0 ;
 
+    // could experiment with "high uncertainty in px, py & v" if I like:
+    // P_ <<
+    // 1000, 0.0, 0.0, 0.0, 0.0,
+    // 0.0, 1000, 0.0, 0.0, 0.0,
+    // 0.0, 0.0, 1000, 0.0, 0.0,
+    // 0.0, 0.0, 0.0, 7.0, 0.0,
+    // 0.0, 0.0, 0.0, 0.0, 7.0 ;
+
 
     if (meas_package.sensor_type_ == MeasurementPackage::RADAR) {
       // Convert radar from polar to cartesian coordinates and initialize state.
@@ -131,7 +139,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   // end copied from ekf project.
   // CRITERIA: Your Kalman Filter algorithm first predicts then updates.
 
-  cout << "timestamp_ :" << meas_package.timestamp_ << endl;
+  // cout << "timestamp_ :" << meas_package.timestamp_ << endl;
   long long delta_t = meas_package.timestamp_ - time_us_ ;
   time_us_ = meas_package.timestamp_ ;
 
@@ -141,7 +149,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   // end copied from ekf project.
   // CRITERIA: Your Kalman Filter can handle radar and lidar measurements.
   if (meas_package.sensor_type_ == MeasurementPackage::RADAR) {
-    cout << "meas_package sensor_type_:  RADAR " << endl ; // << meas_package.sensor_type_ << endl;
+    // cout << "meas_package sensor_type_:  RADAR " << endl ; // << meas_package.sensor_type_ << endl;
     UpdateRadar(meas_package) ;
   } else {
 //    cout << "meas_package sensor_type_: Lidar " << endl ; // << meas_package.sensor_type_ << endl;
@@ -162,18 +170,22 @@ void UKF::Prediction(double delta_t) {
   Complete this function! Estimate the object's location. Modify the state
   vector, x_. Predict sigma points, the state, and the state covariance matrix.
   */
+  bool bdebug = false;
+  // bdebug = true;
 
   // important: must change delta_t from us to seconds, or the angle normalization in step 4 would be too large to perform.
   delta_t = delta_t / 1000000;
-  cout << "Prediction, delta_t : " << delta_t << endl;
+  if (bdebug) {
+    cout << "Prediction, delta_t : " << delta_t << endl;
+  }
 
-  /// step 1: generate sigma points. from: Generating Sigma Points Assignment 1
-  /// step 2: sigma point augmentation. from "UKF Augmentation Assignment 1"
-  /// step 3: Predict sigma points. codes from "Sigma Point Prediction Assignment 1"
-  /// step 4: Predict Mean And Covariance . from "Predicted Mean and Covariance Assignment 1"
+  /// step 1.1: generate sigma points. from: Generating Sigma Points Assignment 1
+  /// step 1.2: sigma point augmentation. from "UKF Augmentation Assignment 1"
+  /// step 2: Predict sigma points. codes from "Sigma Point Prediction Assignment 1"
+  /// step 3: Predict Mean And Covariance . from "Predicted Mean and Covariance Assignment 1"
 
 
-  /// step 1: generate sigma points. from: Generating Sigma Points Assignment 1
+  /// step 1.1: generate sigma points. from: Generating Sigma Points Assignment 1
   //create sigma point matrix
   // todo: move these initilization to Constructor?
   //set state dimension
@@ -196,7 +208,7 @@ void UKF::Prediction(double delta_t) {
   }
 
 
-  /// step 2: sigma point augmentation, from "UKF Augmentation Assignment 1"
+  /// step 1.2: sigma point augmentation, from "UKF Augmentation Assignment 1"
   //create augmented mean state
   //set augmented dimension
   // todo: move these initilization to Constructor?
@@ -231,11 +243,10 @@ void UKF::Prediction(double delta_t) {
   }
 
 
-  /// step 3: Predict sigma points. codes from "Sigma Point Prediction Assignment 1"
+  /// step 2: Predict sigma points. codes from "Sigma Point Prediction Assignment 1"
   //create matrix with predicted sigma points as columns
   Xsig_pred_ = MatrixXd(n_x_, 2 * n_aug_ + 1);
-  // Xsig_pred.fill(0.0);
-  std::cout << "Xsig_pred_ = " << std::endl << Xsig_pred_ << std::endl;
+  Xsig_pred_.fill(0.0);
   for (int i = 0; i < 2 * n_aug_ + 1; i++)
   {
 
@@ -257,12 +268,12 @@ void UKF::Prediction(double delta_t) {
         py_p = p_y + v/yawd * ( -cos(yaw + yawd * delta_t ) + cos(yaw)  );
 //        py_p = p_y + v/yawd * ( cos(yaw) - cos(yaw+yawd*delta_t) );
     } else {
-        px_p = p_x + v*delta_t*cos(yaw);
-        py_p = p_y + v*delta_t*sin(yaw);
+        px_p = p_x + v * delta_t * cos(yaw);
+        py_p = p_y + v * delta_t * sin(yaw);
     }
     //add noise
-    px_p = px_p + 0.5*nu_a*delta_t*delta_t * cos(yaw);
-    py_p = py_p + 0.5*nu_a*delta_t*delta_t * sin(yaw);
+    px_p = px_p + 0.5 * nu_a*delta_t*delta_t * cos(yaw);
+    py_p = py_p + 0.5 * nu_a*delta_t*delta_t * sin(yaw);
 
     //write predicted sigma points into right column
     Xsig_pred_(0,i) = px_p;
@@ -280,11 +291,13 @@ void UKF::Prediction(double delta_t) {
     yawd_p = yawd_p + nu_yawdd*delta_t;
     Xsig_pred_(4,i) = yawd_p;
   }
-  std::cout << "Xsig_pred_ : " << std::endl << Xsig_pred_ << std::endl ;
+  if (bdebug) {
+    std::cout << "Xsig_pred_ : " << std::endl << Xsig_pred_ << std::endl ;
+  }
 
 // return;
 
-  /// step 4: Predict Mean And Covariance . from "Predicted Mean and Covariance Assignment 1"
+  /// step 3: Predict Mean And Covariance . from "Predicted Mean and Covariance Assignment 1"
   weights_ = VectorXd(2 * n_aug_ + 1);
   weights_(0) = lambda_ / (lambda_ + n_aug_);
   for (int it = 1; it < 2 * n_aug_ + 1; it++) {
@@ -292,7 +305,7 @@ void UKF::Prediction(double delta_t) {
       // double weight = 0.5 / (lambda + n_aug);
       // weights(it) = weight;
   }
-  std::cout << "weights : " << weights_ << std::endl ;
+  // std::cout << "weights : " << weights_ << std::endl ;
 
   //predict state mean
   x_.fill(0.0);
@@ -310,20 +323,18 @@ void UKF::Prediction(double delta_t) {
       // state difference
       VectorXd x_diff = Xsig_pred_.col(it) - x_;
       //angle normalization
-      while (x_diff(3) > M_PI) {
-          x_diff(3) -= 2. * M_PI;
+      while (x_diff(3)>M_PI) {
+          x_diff(3)-=2.*M_PI;
           // std::cout << "x_diff(3) > : " << x_diff(3) << std::endl ;
           // std::cout << "M_PI : " << M_PI << std::endl ;
       }
-      while (x_diff(3) < -M_PI) {
-          x_diff(3) += 2.*M_PI;
+      while (x_diff(3)<-M_PI) {
+          x_diff(3)+=2.*M_PI;
           // std::cout << "x_diff(3) <- : " << x_diff(3) << std::endl ;
           // std::cout << "M_PI : " << M_PI << std::endl ;
       }
       P_ = P_ + weights_(it) * x_diff * x_diff.transpose() ;
   }
-
-
 
 }
 
@@ -356,11 +367,12 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
 
   You'll also need to calculate the radar NIS.
   */
-  cout << "UpdateRadar : " << endl;
+  // cout << "UpdateRadar : " << endl;
 
+  bool bdebug = false;
+  // bdebug = true;
 
-  /// step 5: Measurement Prediction. codes from Predict Radar Measurement Assignment
-  std::cout << "step 5 : " << std::endl ;
+  /// step 4: Predict Measurement. codes from Predict Radar Measurement Assignment.
   //set measurement dimension, radar can measure r, phi, and r_dot
   int n_z = 3;
   //create matrix for sigma points in measurement space
@@ -381,7 +393,9 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
     Zsig(1,i) = atan2(p_y,p_x);                                 //phi
     Zsig(2,i) = (p_x*v1 + p_y*v2 ) / sqrt(p_x*p_x + p_y*p_y);   //r_dot
   }
-  std::cout << "Zsig : "  << std::endl << Zsig << std::endl;
+  if (bdebug) {
+    std::cout << "Zsig : "  << std::endl << Zsig << std::endl;
+  }
 
   //mean predicted measurement
   VectorXd z_pred = VectorXd(n_z);
@@ -389,7 +403,9 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   for (int i=0; i < 2*n_aug_+1; i++) {
       z_pred = z_pred + weights_(i) * Zsig.col(i);
   }
-  std::cout << "z_pred : "  << std::endl << z_pred << std::endl;
+  if (bdebug) {
+    std::cout << "z_pred : "  << std::endl << z_pred << std::endl;
+  }
 
   //measurement covariance matrix S
   MatrixXd S = MatrixXd(n_z, n_z);
@@ -399,91 +415,133 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
     VectorXd z_diff = Zsig.col(i) - z_pred;
 
     //angle normalization
-    while (z_diff(1)> M_PI) {
+    while (z_diff(1)>M_PI) {
       z_diff(1) -= 2.*M_PI;
-      std::cout << "z_diff(1) > : " << z_diff(1) << std::endl ;
+      if (bdebug) {
+        std::cout << "z_diff(1) > : " << z_diff(1) << std::endl ;
+      }
     }
     while (z_diff(1)<-M_PI) {
-      z_diff(1)+=2.*M_PI;
-      std::cout << "z_diff(1) <- : " << z_diff(1) << std::endl ;
+      z_diff(1) += 2.*M_PI;
+      if (bdebug) {
+        std::cout << "z_diff(1) <- : " << z_diff(1) << std::endl ;
+      }
     }
-
     S = S + weights_(i) * z_diff * z_diff.transpose();
-    std::cout << "z_diff : "  << std::endl << z_diff << std::endl;
+    if (bdebug) {
+      std::cout << "z_diff : "  << std::endl << z_diff << std::endl;
+    }
   }
 
   //add measurement noise covariance matrix
   MatrixXd R = MatrixXd(n_z, n_z);
   R <<    std_radr_ * std_radr_, 0, 0,
           0, std_radphi_ * std_radphi_, 0,
-          0, 0,std_radrd_ * std_radrd_;
+          0, 0, std_radrd_ * std_radrd_;
   S = S + R;
-  std::cout << "S : "  << std::endl << S << std::endl;
+  if (bdebug) {
+    std::cout << "S : "  << std::endl << S << std::endl;
+  }
 
 // return;
-  /// step 6: UKF update.
+  /// step 5: Update state. UKF update.
   //create example vector for incoming radar measurement
   VectorXd z = VectorXd(n_z);
-  // z <<
-  //     5.9214,
-  //     0.2187,
-  //     2.0062;
   z << meas_package.raw_measurements_ ;
 
-  std::cout << "calculate cross correlation matrix : "  << std::endl ;
+  if (bdebug) {
+    std::cout << "calculate cross correlation matrix : "  << std::endl ;
+  }
   //create matrix for cross correlation Tc
   MatrixXd Tc = MatrixXd(n_x_, n_z);
   Tc.fill(0.0);
-  std::cout << "z_pred : "  << std::endl << z_pred << std::endl;
+  if (bdebug) {
+    std::cout << "z_pred : "  << std::endl << z_pred << std::endl;
+  }
   for (int i = 0; i < 2 * n_aug_ + 1; i++) {  //2n+1 simga points
     //residual
     VectorXd z_diff = Zsig.col(i) - z_pred;
     //angle normalization
-    while (z_diff(1)> M_PI) {
+    while (z_diff(1) > M_PI) {
        z_diff(1)-=2.*M_PI;
-       std::cout << "z_diff(1) > : " << z_diff(1) << std::endl ;
+       if (bdebug) {
+         std::cout << "z_diff(1) > : " << z_diff(1) << std::endl ;
+       }
     }
     while (z_diff(1)<-M_PI) {
       z_diff(1)+=2.*M_PI;
-      std::cout << "z_diff(1) <- : " << z_diff(1) << std::endl ;
+      if (bdebug) {
+        std::cout << "z_diff(1) <- : " << z_diff(1) << std::endl ;
+      }
     }
 
     // state difference
     VectorXd x_diff = Xsig_pred_.col(i) - x_;
     //angle normalization
-    while (x_diff(3)> M_PI) {
+    std::cout << "iteration : " << i << " ";
+    while (x_diff(3)>M_PI) {
+      std::cout << "before: in state difference, x_diff(3) > : " << x_diff(3) << " M_PI : " << M_PI << std::endl ;
       x_diff(3)-=2.*M_PI;
-      std::cout << "x_diff(3) > : " << x_diff(3) << std::endl ;
+      std::cout << "after: in state difference, x_diff(3) > : " << x_diff(3) << " M_PI : " << M_PI << std::endl ;
     }
     while (x_diff(3)<-M_PI) {
+      std::cout << "before: in state difference, x_diff(3) <- : " << x_diff(3) << " M_PI : " << M_PI << std::endl ;
       x_diff(3)+=2.*M_PI;
-      std::cout << "x_diff(3) <- : " << x_diff(3) << std::endl ;
+      std::cout << "after: in state difference, x_diff(3) <- : " << x_diff(3) << " M_PI : " << M_PI << std::endl ;
     }
+    // todo:
+    // strange value with dataset 2:
+    // before: in state difference, x_diff(3) <- : -3.21725 M_PI : 3.14159
+    // after: in state difference, x_diff(3) <- : 3.06594 M_PI : 3.14159
+    // before: in state difference, x_diff(3) > : 3.21725 M_PI : 3.14159
+    // after: in state difference, x_diff(3) > : -3.06594 M_PI : 3.14159
+
+    // before: in state difference, x_diff(3) > : 3.53236 M_PI : 3.14159
+    // after: in state difference, x_diff(3) > : -2.75083 M_PI : 3.14159
+    // before: in state difference, x_diff(3) <- : -3.53236 M_PI : 3.14159
+    // after: in state difference, x_diff(3) <- : 2.75083 M_PI : 3.14159
+
+    // iteration : 0 iteration : 1 iteration : 2
+    // before: in state difference, x_diff(3) <- : -3.21725 M_PI : 3.14159
+    // after: in state difference, x_diff(3) <- : 3.06594 M_PI : 3.14159
+    // iteration : 3 iteration : 4 iteration : 5 iteration : 6 iteration : 7 iteration : 8 iteration : 9
+    // before: in state difference, x_diff(3) > : 3.21725 M_PI : 3.14159
+    // after: in state difference, x_diff(3) > : -3.06594 M_PI : 3.14159
+    // iteration : 10 iteration : 11 iteration : 12 iteration : 13 iteration : 14
+
+    // which means a bug? but what and how ?
+
     Tc = Tc + weights_(i) * x_diff * z_diff.transpose();
     // std::cout << "weights_(i) : " << std::endl << weights_(i) << std::endl ;
     // std::cout << "x_diff : " << std::endl << x_diff << std::endl ;
-    std::cout << "z_diff : " << std::endl << z_diff << std::endl ;
-    std::cout << "z_diff.transpose() : " << std::endl << z_diff.transpose() << std::endl ;
-    std::cout << "Tc : " << Tc << std::endl ;
+    if (bdebug) {
+      std::cout << "z_diff : " << std::endl << z_diff << std::endl ;
+      std::cout << "z_diff.transpose() : " << std::endl << z_diff.transpose() << std::endl ;
+      std::cout << "Tc : " << Tc << std::endl ;
+    }
   }
 
   //Kalman gain K;
   MatrixXd K = Tc * S.inverse();
-  std::cout << "Kalman gain K : " << K << std::endl ;
+  if (bdebug) {
+    std::cout << "Kalman gain K : " << K << std::endl ;
+  }
   //residual
   VectorXd z_diff = z - z_pred;
   //angle normalization
-  while (z_diff(1)> M_PI) {
+  while (z_diff(1) > M_PI) {
     z_diff(1)-=2.*M_PI;
-    std::cout << "z_diff(1) > : " << z_diff(1) << std::endl ;
+    // std::cout << "z_diff(1) > : " << z_diff(1) << std::endl ;
   }
   while (z_diff(1)<-M_PI) {
     z_diff(1)+=2.*M_PI;
-    std::cout << "z_diff(1) <- : " << z_diff(1) << std::endl ;
+    // std::cout << "z_diff(1) <- : " << z_diff(1) << std::endl ;
   }
   //update state mean and covariance matrix
-  std::cout << "update state mean and covariance matrix : " << std::endl ;
+  if (bdebug) {
+    std::cout << "update state mean and covariance matrix : " << std::endl ;
+  }
   x_ = x_ + K * z_diff;
-  P_ = P_ - K*S*K.transpose();
+  P_ = P_ - K * S * K.transpose();
 
 }
