@@ -22,7 +22,8 @@ UKF::UKF() {
   x_ = VectorXd(5);
 
   // initial covariance matrix
-  P_ = MatrixXd(5, 5);
+  // P_ = MatrixXd(5, 5);
+  P_ = MatrixXd::Zero(5, 5);
 
 
   // quote project tips :
@@ -154,7 +155,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   // CRITERIA: Your Kalman Filter can handle radar and lidar measurements.
   if (meas_package.sensor_type_ == MeasurementPackage::RADAR) {
     // cout << "meas_package sensor_type_:  RADAR " << endl ; // << meas_package.sensor_type_ << endl;
-    UpdateRadar(meas_package) ;
+    // UpdateRadar(meas_package) ;
   } else {
 //    cout << "meas_package sensor_type_: Lidar " << endl ; // << meas_package.sensor_type_ << endl;
     UpdateLidar(meas_package) ;
@@ -249,8 +250,9 @@ void UKF::Prediction(double delta_t) {
 
   /// step 2: Predict sigma points. codes from "Sigma Point Prediction Assignment 1"
   //create matrix with predicted sigma points as columns
-  Xsig_pred_ = MatrixXd(n_x_, 2 * n_aug_ + 1);
-  Xsig_pred_.fill(0.0);
+  // Xsig_pred_ = MatrixXd(n_x_, 2 * n_aug_ + 1);
+  // Xsig_pred_.fill(0.0);
+  Xsig_pred_ = MatrixXd::Zero(n_x_, 2 * n_aug_ + 1);
   for (int i = 0; i < 2 * n_aug_ + 1; i++)
   {
 
@@ -342,21 +344,6 @@ void UKF::Prediction(double delta_t) {
 
 }
 
-/**
- * Updates the state and the state covariance matrix using a laser measurement.
- * @param {MeasurementPackage} meas_package
- */
-void UKF::UpdateLidar(MeasurementPackage meas_package) {
-  /**
-  TODO:
-
-  Complete this function! Use lidar data to update the belief about the object's
-  position. Modify the state vector, x_, and covariance, P_.
-
-  You'll also need to calculate the lidar NIS.
-  */
-  cout << "UpdateLidar : " << endl;
-}
 
 /**
  * Updates the state and the state covariance matrix using a radar measurement.
@@ -482,7 +469,7 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
     // state difference
     VectorXd x_diff = Xsig_pred_.col(i) - x_;
     //angle normalization
-    std::cout << "iteration : " << i << " ";
+    // std::cout << "iteration : " << i << " ";
     while (x_diff(3)>M_PI) {
       // std::cout << "before: in state difference, x_diff(3) > : " << x_diff(3) << " M_PI : " << M_PI << std::endl ;
       x_diff(3)-=2.*M_PI;
@@ -538,5 +525,58 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   }
   x_ = x_ + K * z_diff;
   P_ = P_ - K * S * K.transpose();
+
+}
+
+
+
+
+/**
+ * Updates the state and the state covariance matrix using a laser measurement.
+ * @param {MeasurementPackage} meas_package
+ */
+void UKF::UpdateLidar(MeasurementPackage meas_package) {
+  /**
+  TODO:
+
+  Complete this function! Use lidar data to update the belief about the object's
+  position. Modify the state vector, x_, and covariance, P_.
+
+  You'll also need to calculate the lidar NIS.
+  */
+  cout << "UpdateLidar : measurement_pack.raw_measurements_ : " << meas_package.raw_measurements_ << endl;
+
+  //measurement covariance matrix - laser
+  MatrixXd R_laser_ = MatrixXd::Zero(2, 2);
+  R_laser_ << 0.0225, 0,
+              0, 0.0225;
+  MatrixXd R_ = R_laser_;
+
+  // MatrixXd H_laser_ = MatrixXd::Zero(2, 4);
+  // H_laser_ << 1, 0, 0, 0,
+  //             0, 1, 0, 0 ;
+  MatrixXd H_laser_ = MatrixXd::Zero(2, 5);
+  H_laser_ << 1, 0, 0, 0, 0,
+              0, 1, 0, 0, 0;
+  MatrixXd H_ = H_laser_;
+  VectorXd z_pred = H_ * x_;
+
+  VectorXd z = VectorXd::Zero(2);
+  z << meas_package.raw_measurements_ ;
+  VectorXd y = z - z_pred;
+  // cout << " z : " << endl << z << endl;
+  // cout << " z_pred : " << endl << z_pred << endl ;
+  // cout << " y : " << endl << y << endl ;
+
+  MatrixXd Ht = H_.transpose();
+  MatrixXd S = H_ * P_ * Ht + R_;
+  MatrixXd Si = S.inverse();
+	MatrixXd PHt = P_ * Ht;
+  MatrixXd K = PHt * Si;
+  //new estimate
+  x_ = x_ + (K * y);
+  long x_size = x_.size();
+  MatrixXd I = MatrixXd::Identity(x_size, x_size);
+  P_ = (I - K * H_) * P_;
 
 }
