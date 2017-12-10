@@ -227,7 +227,6 @@ void UKF::Prediction(double delta_t) {
   /// step 1.2: sigma point augmentation, from "UKF Augmentation Assignment 1"
   //create augmented mean state
   //set augmented dimension
-  // todo: move these initilization to Constructor?
   n_aug_ = 7;
   //create augmented mean vector
   VectorXd x_aug = VectorXd(n_aug_);
@@ -356,7 +355,6 @@ void UKF::Prediction(double delta_t) {
  */
 void UKF::UpdateRadar(MeasurementPackage meas_package) {
   /**
-  TODO:
 
   Complete this function! Use radar data to update the belief about the object's
   position. Modify the state vector, x_, and covariance, P_.
